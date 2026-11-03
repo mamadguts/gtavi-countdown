@@ -1,0 +1,1577 @@
+<!DOCTYPE html>
+<html lang="fa" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>GTA VI // Vice City & Leonida Interactive Hub</title>
+    <style>
+        :root {
+            --neon-pink: #ff007f;
+            --neon-cyan: #00f5d4;
+            --neon-gold: #ffb703;
+            --neon-purple: #8338ec;
+            --bg-dark: #06010c;
+            --glass-bg: rgba(15, 2, 26, 0.72);
+            --glass-border: rgba(255, 0, 127, 0.35);
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            -webkit-tap-highlight-color: transparent;
+        }
+
+        body {
+            background-color: var(--bg-dark);
+            color: #ffffff;
+            font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Tahoma', sans-serif;
+            overflow-x: hidden;
+            min-height: 100vh;
+            position: relative;
+            selection-background-color: var(--neon-pink);
+        }
+
+        /* بوم نقاشی متحرک سه‌بعدی بزرگراه و غروب وایس سیتی */
+        #viceCanvas {
+            position: fixed;
+            inset: 0;
+            width: 100vw;
+            height: 100vh;
+            z-index: 0;
+            pointer-events: none;
+        }
+
+        /* لایه آژیر پلیس و هلیکوپتر در حالت Wanted */
+        #policeOverlay {
+            position: fixed;
+            inset: 0;
+            z-index: 2;
+            pointer-events: none;
+            opacity: 0;
+            transition: opacity 0.3s ease;
+        }
+
+        .siren-active {
+            opacity: 1 !important;
+            animation: policeFlash 0.7s infinite alternate;
+        }
+
+        @keyframes policeFlash {
+            0% { box-shadow: inset 0 0 130px rgba(255, 0, 50, 0.55); background: rgba(255, 0, 40, 0.06); }
+            100% { box-shadow: inset 0 0 130px rgba(0, 110, 255, 0.55); background: rgba(0, 100, 255, 0.06); }
+        }
+
+        /* پروژکتور هلیکوپتر پلیس در ۵ و ۶ ستاره */
+        #heliSearchlight {
+            position: fixed;
+            width: 340px;
+            height: 340px;
+            border-radius: 50%;
+            background: radial-gradient(circle, rgba(255,255,255,0.28) 0%, rgba(200,240,255,0.08) 50%, transparent 70%);
+            mix-blend-mode: screen;
+            z-index: 3;
+            pointer-events: none;
+            display: none;
+            filter: blur(8px);
+            animation: heliSweep 7s infinite ease-in-out alternate;
+        }
+
+        @keyframes heliSweep {
+            0% { transform: translate(10vw, 15vh) scale(1); }
+            33% { transform: translate(65vw, 45vh) scale(1.25); }
+            66% { transform: translate(25vw, 65vh) scale(0.9); }
+            100% { transform: translate(75vw, 15vh) scale(1.1); }
+        }
+
+        /* نوار اخبار فوری Weazel News در بالای صفحه */
+        .news-ticker {
+            position: sticky;
+            top: 0;
+            z-index: 50;
+            background: rgba(10, 0, 18, 0.92);
+            border-bottom: 2px solid var(--neon-pink);
+            box-shadow: 0 4px 25px rgba(255, 0, 127, 0.4);
+            padding: 8px 16px;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            backdrop-filter: blur(12px);
+        }
+
+        .news-badge {
+            background: linear-gradient(90deg, #ff007f, #ff5500);
+            color: #fff;
+            font-weight: 900;
+            font-size: 0.72rem;
+            padding: 4px 10px;
+            border-radius: 6px;
+            white-space: nowrap;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            box-shadow: 0 0 12px rgba(255, 0, 127, 0.7);
+            animation: pulseBadge 1.5s infinite alternate;
+        }
+
+        @keyframes pulseBadge {
+            from { transform: scale(1); }
+            to { transform: scale(1.05); }
+        }
+
+        .news-content {
+            font-size: 0.85rem;
+            color: #ffd6eb;
+            font-weight: 600;
+            transition: opacity 0.3s ease;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+            flex: 1;
+        }
+
+        /* ظرف اصلی محتوا */
+        .main-wrapper {
+            position: relative;
+            z-index: 10;
+            max-width: 1180px;
+            margin: 0 auto;
+            padding: 18px 16px 90px;
+            display: flex;
+            flex-direction: column;
+            gap: 24px;
+        }
+
+        /* هدر بالایی و GTA HUD */
+        .hud-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            flex-wrap: wrap;
+            gap: 16px;
+        }
+
+        .gta-hud-box {
+            background: rgba(8, 1, 15, 0.82);
+            border: 1px solid rgba(255, 255, 255, 0.16);
+            border-radius: 16px;
+            padding: 12px 18px;
+            backdrop-filter: blur(12px);
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+            box-shadow: 0 8px 25px rgba(0, 0, 0, 0.6);
+        }
+
+        .hud-top-row {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 16px;
+        }
+
+        .hud-cash {
+            font-family: 'Courier New', monospace;
+            font-weight: 900;
+            font-size: 1.35rem;
+            color: #2ec4b6;
+            text-shadow: 0 0 10px rgba(46, 196, 182, 0.6);
+            letter-spacing: 1px;
+            cursor: pointer;
+            user-select: none;
+            transition: transform 0.15s;
+        }
+
+        .hud-cash:active {
+            transform: scale(1.1);
+        }
+
+        .wanted-stars {
+            display: flex;
+            gap: 5px;
+            direction: ltr;
+        }
+
+        .star-btn {
+            font-size: 1.45rem;
+            color: rgba(255, 255, 255, 0.22);
+            cursor: pointer;
+            transition: all 0.2s ease;
+            user-select: none;
+            line-height: 1;
+        }
+
+        .star-btn:hover {
+            transform: scale(1.2);
+            color: rgba(255, 183, 3, 0.65);
+        }
+
+        .star-btn.active {
+            color: #ffb703;
+            text-shadow: 0 0 12px #ffb703, 0 0 24px #ff007f;
+            animation: starBlink 0.6s infinite alternate;
+        }
+
+        @keyframes starBlink {
+            from { opacity: 1; transform: scale(1); }
+            to { opacity: 0.65; transform: scale(1.12); }
+        }
+
+        /* دکمه‌های نئونی */
+        .btn-ctrl {
+            background: rgba(24, 3, 38, 0.8);
+            border: 1px solid rgba(0, 245, 212, 0.5);
+            color: var(--neon-cyan);
+            padding: 8px 16px;
+            border-radius: 30px;
+            font-size: 0.82rem;
+            font-weight: 700;
+            cursor: pointer;
+            transition: all 0.25s ease;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            backdrop-filter: blur(8px);
+            font-family: inherit;
+        }
+
+        .btn-ctrl:hover {
+            background: rgba(0, 245, 212, 0.22);
+            box-shadow: 0 0 18px rgba(0, 245, 212, 0.55);
+            transform: translateY(-2px);
+        }
+
+        .btn-ctrl.active {
+            background: linear-gradient(90deg, rgba(255, 0, 127, 0.45), rgba(131, 56, 236, 0.45));
+            border-color: var(--neon-pink);
+            color: #ffffff;
+            box-shadow: 0 0 18px rgba(255, 0, 127, 0.7);
+        }
+
+        /* بخش مرکزی لوگو و هرو */
+        .hero-section {
+            text-align: center;
+            position: relative;
+            padding: 10px 0;
+        }
+
+        .gta-subtitle-top {
+            font-size: clamp(0.95rem, 2.5vw, 1.4rem);
+            font-weight: 900;
+            letter-spacing: 6px;
+            color: var(--neon-cyan);
+            text-transform: uppercase;
+            text-shadow: 0 0 12px var(--neon-cyan);
+        }
+
+        .gta-vi-logo {
+            font-weight: 900;
+            font-style: italic;
+            font-size: clamp(5.5rem, 17vw, 11.5rem);
+            line-height: 0.88;
+            letter-spacing: -6px;
+            background: linear-gradient(180deg, #ffffff 0%, #ffd6eb 24%, #ff007f 58%, #ff7b00 85%, #5a0066 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            filter: drop-shadow(0 0 28px rgba(255, 0, 127, 0.75));
+            user-select: none;
+            margin: 4px 0 10px;
+            display: inline-block;
+            transition: transform 0.2s ease;
+        }
+
+        .gta-vi-logo:hover {
+            transform: scale(1.03) rotate(-1deg);
+        }
+
+        .release-pill {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            background: rgba(255, 183, 3, 0.14);
+            border: 1px solid rgba(255, 183, 3, 0.55);
+            color: var(--neon-gold);
+            padding: 6px 18px;
+            border-radius: 99px;
+            font-weight: 800;
+            font-size: 0.88rem;
+            letter-spacing: 1px;
+            box-shadow: 0 0 20px rgba(255, 183, 3, 0.25);
+        }
+
+        /* شبکه ۵ تایی شمارش معکوس به همراه میلی‌ثانیه */
+        .countdown-grid {
+            display: grid;
+            grid-template-columns: repeat(5, 1fr);
+            gap: 14px;
+            width: 100%;
+            margin: 6px auto;
+        }
+
+        @media (max-width: 768px) {
+            .countdown-grid {
+                grid-template-columns: repeat(2, 1fr);
+            }
+            .ms-card-span {
+                grid-column: span 2;
+            }
+        }
+
+        .count-card {
+            padding: 20px 12px;
+            text-align: center;
+            border-radius: 20px;
+            background: rgba(14, 2, 24, 0.78);
+            backdrop-filter: blur(16px);
+            border: 1px solid rgba(255, 0, 127, 0.35);
+            box-shadow: 0 12px 32px rgba(0, 0, 0, 0.6), inset 0 0 18px rgba(255, 0, 127, 0.12);
+            position: relative;
+            overflow: hidden;
+            transition: transform 0.2s ease, border-color 0.2s ease;
+        }
+
+        .count-card:hover {
+            transform: translateY(-5px);
+            border-color: var(--neon-cyan);
+            box-shadow: 0 15px 35px rgba(0, 245, 212, 0.28), inset 0 0 22px rgba(0, 245, 212, 0.18);
+        }
+
+        .count-val {
+            font-family: 'Courier New', monospace;
+            font-size: clamp(2.2rem, 5vw, 3.8rem);
+            font-weight: 900;
+            line-height: 1.05;
+            letter-spacing: 1px;
+        }
+
+        .count-label {
+            font-size: 0.78rem;
+            font-weight: 800;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+            margin-top: 8px;
+            opacity: 0.9;
+        }
+
+        .neon-pink { color: #fff; text-shadow: 0 0 10px #ff007f, 0 0 25px #ff007f; }
+        .neon-gold { color: #fff; text-shadow: 0 0 10px #ffb703, 0 0 25px #fb8500; }
+        .neon-cyan { color: #fff; text-shadow: 0 0 10px #00f5d4, 0 0 25px #00f5d4; }
+        .neon-purple { color: #fff; text-shadow: 0 0 10px #b5179e, 0 0 25px #7209b7; }
+
+        /* نوار پیشرفت انتظار از تریلر ۱ تا انتشار */
+        .wait-progress-box {
+            background: var(--glass-bg);
+            border: 1px solid var(--glass-border);
+            border-radius: 18px;
+            padding: 16px 20px;
+            backdrop-filter: blur(14px);
+        }
+
+        .progress-track {
+            width: 100%;
+            height: 14px;
+            background: rgba(0, 0, 0, 0.65);
+            border-radius: 99px;
+            overflow: hidden;
+            border: 1px solid rgba(255, 255, 255, 0.15);
+            margin: 10px 0 6px;
+            position: relative;
+        }
+
+        .progress-fill {
+            height: 100%;
+            width: 0%;
+            background: linear-gradient(90deg, #00f5d4, #ff007f, #ffb703);
+            box-shadow: 0 0 16px rgba(255, 0, 127, 0.8);
+            border-radius: 99px;
+            transition: width 0.4s ease;
+        }
+
+        /* پنل کالیبراسیون ساعت و رادیو */
+        .dual-grid {
+            display: grid;
+            grid-template-columns: 1.2fr 1fr;
+            gap: 18px;
+        }
+
+        @media (max-width: 900px) {
+            .dual-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        .glass-card {
+            background: var(--glass-bg);
+            border: 1px solid var(--glass-border);
+            border-radius: 20px;
+            padding: 20px;
+            backdrop-filter: blur(14px);
+            box-shadow: 0 12px 32px rgba(0, 0, 0, 0.55);
+        }
+
+        .card-header-title {
+            font-size: 1.05rem;
+            font-weight: 900;
+            color: var(--neon-cyan);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 8px;
+            margin-bottom: 14px;
+            padding-bottom: 10px;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .live-clock-badge {
+            font-family: 'Courier New', monospace;
+            background: rgba(0, 245, 212, 0.12);
+            border: 1px solid rgba(0, 245, 212, 0.45);
+            color: var(--neon-cyan);
+            padding: 5px 12px;
+            border-radius: 8px;
+            font-weight: 800;
+            font-size: 0.85rem;
+        }
+
+        /* رادیو وایس سیتی و ویژوالایزر */
+        .radio-stations-list {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 8px;
+            margin-bottom: 12px;
+        }
+
+        .station-btn {
+            background: rgba(0, 0, 0, 0.5);
+            border: 1px solid rgba(255, 255, 255, 0.16);
+            border-radius: 12px;
+            padding: 10px 8px;
+            color: #e0c8d8;
+            cursor: pointer;
+            text-align: center;
+            transition: all 0.2s;
+            font-family: inherit;
+        }
+
+        .station-btn:hover {
+            border-color: var(--neon-cyan);
+            color: #fff;
+        }
+
+        .station-btn.active {
+            background: linear-gradient(135deg, rgba(255,0,127,0.35), rgba(0,245,212,0.25));
+            border-color: var(--neon-pink);
+            color: #fff;
+            box-shadow: 0 0 15px rgba(255, 0, 127, 0.45);
+        }
+
+        #audioVisualizer {
+            width: 100%;
+            height: 54px;
+            background: rgba(4, 0, 8, 0.7);
+            border-radius: 10px;
+            border: 1px solid rgba(0, 245, 212, 0.25);
+        }
+
+        /* نقشه رادار تعاملی ایالت لئونیدا */
+        .map-wrapper {
+            display: grid;
+            grid-template-columns: 1.3fr 1fr;
+            gap: 18px;
+            align-items: stretch;
+        }
+
+        @media (max-width: 850px) {
+            .map-wrapper {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        .radar-screen {
+            position: relative;
+            background: radial-gradient(circle at center, #0c232c 0%, #050b12 100%);
+            border: 2px solid rgba(0, 245, 212, 0.45);
+            border-radius: 18px;
+            min-height: 310px;
+            overflow: hidden;
+            box-shadow: inset 0 0 40px rgba(0, 245, 212, 0.2);
+        }
+
+        .radar-sweep {
+            position: absolute;
+            inset: -50%;
+            background: conic-gradient(from 0deg, transparent 75%, rgba(0, 245, 212, 0.28) 100%);
+            animation: radarSpin 5s linear infinite;
+            pointer-events: none;
+        }
+
+        @keyframes radarSpin {
+            from { transform: rotate(0deg); }
+            to { transform: rotate(360deg); }
+        }
+
+        .map-pin {
+            position: absolute;
+            width: 22px;
+            height: 22px;
+            border-radius: 50%;
+            background: var(--neon-pink);
+            border: 2px solid #fff;
+            transform: translate(-50%, -50%);
+            cursor: pointer;
+            box-shadow: 0 0 15px var(--neon-pink);
+            transition: transform 0.2s, background 0.2s;
+            z-index: 5;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 0.65rem;
+            font-weight: 900;
+        }
+
+        .map-pin:hover, .map-pin.active {
+            transform: translate(-50%, -50%) scale(1.35);
+            background: var(--neon-cyan);
+            box-shadow: 0 0 20px var(--neon-cyan);
+            color: #000;
+        }
+
+        /* پرونده شخصیت‌ها (Lucia & Jason) */
+        .dossier-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(310px, 1fr));
+            gap: 18px;
+        }
+
+        .skill-row {
+            margin-top: 8px;
+        }
+
+        .skill-label {
+            display: flex;
+            justify-content: space-between;
+            font-size: 0.75rem;
+            font-weight: 700;
+            margin-bottom: 3px;
+            color: #e4d0ef;
+        }
+
+        .skill-bar {
+            height: 7px;
+            background: rgba(255, 255, 255, 0.12);
+            border-radius: 99px;
+            overflow: hidden;
+        }
+
+        .skill-fill {
+            height: 100%;
+            border-radius: 99px;
+            background: linear-gradient(90deg, var(--neon-pink), var(--neon-cyan));
+        }
+
+        /* شبکه اجتماعی Leonida Bleeter */
+        .bleet-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+            gap: 14px;
+        }
+
+        .bleet-post {
+            background: rgba(10, 1, 18, 0.78);
+            border: 1px solid rgba(255, 255, 255, 0.12);
+            border-radius: 14px;
+            padding: 14px;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+            gap: 10px;
+        }
+
+        .like-btn {
+            background: rgba(255, 0, 127, 0.15);
+            border: 1px solid rgba(255, 0, 127, 0.4);
+            color: #ff85be;
+            padding: 4px 12px;
+            border-radius: 20px;
+            font-size: 0.75rem;
+            font-weight: 700;
+            cursor: pointer;
+            transition: all 0.15s;
+        }
+
+        .like-btn:hover {
+            background: var(--neon-pink);
+            color: #fff;
+            transform: scale(1.06);
+        }
+
+        .date-input-custom {
+            background: rgba(5, 0, 10, 0.9);
+            border: 1px solid var(--neon-pink);
+            color: #ffffff;
+            padding: 6px 12px;
+            border-radius: 20px;
+            font-size: 0.8rem;
+            font-family: inherit;
+            outline: none;
+            color-scheme: dark;
+        }
+    </style>
+</head>
+<body>
+
+    <!-- بوم نقاشی متحرک سه‌بعدی بزرگراه نئونی، غروب وایس سیتی و امواج اقیانوس -->
+    <canvas id="viceCanvas"></canvas>
+
+    <!-- افکت نوری تعقیب و گریز پلیس و پروژکتور هلیکوپتر -->
+    <div id="policeOverlay"></div>
+    <div id="heliSearchlight"></div>
+
+    <!-- نوار خبر فوری لئونیدا -->
+    <div class="news-ticker">
+        <span class="news-badge" id="lblNewsBadge">خبر فوری لئونیدا</span>
+        <div class="news-content" id="newsContent">راک‌استار گیمز تایید کرد: انتشار جهانی GTA VI در تاریخ ۱۹ نوامبر ۲۰۲۶ (۲۸ آبان ۱۴۰۵)!</div>
+    </div>
+
+    <div class="main-wrapper">
+
+        <!-- هدر بالایی: GTA HUD (پول و ستاره‌های پلیس) + دکمه‌های زبان -->
+        <header class="hud-header">
+            <div class="gta-hud-box">
+                <div class="hud-top-row">
+                    <span class="hud-cash" id="hudCash" onclick="addHeistCash()" title="کلیک برای سرقت پول بیشتر!">$99,999,999</span>
+                    <span style="font-size: 0.72rem; background: rgba(255,0,127,0.25); border: 1px solid #ff007f; padding: 2px 8px; border-radius: 6px; font-weight: 800;" id="lblWantedStatus">وضعیت: عادی</span>
+                </div>
+                <div style="display: flex; align-items: center; justify-content: space-between; gap: 12px;">
+                    <span style="font-size: 0.72rem; color: #cbd5e1;" id="lblWantedHint">سطح تعقیب پلیس (کلیک کنید):</span>
+                    <div class="wanted-stars" id="wantedStarsContainer">
+                        <span class="star-btn" onclick="setWantedLevel(1)">★</span>
+                        <span class="star-btn" onclick="setWantedLevel(2)">★</span>
+                        <span class="star-btn" onclick="setWantedLevel(3)">★</span>
+                        <span class="star-btn" onclick="setWantedLevel(4)">★</span>
+                        <span class="star-btn" onclick="setWantedLevel(5)">★</span>
+                        <span class="star-btn" onclick="setWantedLevel(6)">★</span>
+                    </div>
+                </div>
+            </div>
+
+            <div style="display: flex; gap: 10px; flex-wrap: wrap;">
+                <button onclick="clearWanted()" id="btnClearWanted" class="btn-ctrl" style="display: none; border-color: #ffbe0b; color: #ffbe0b;">
+                    <span>🚓</span> <span id="lblBribe">رشوه به پلیس (حذف ستاره)</span>
+                </button>
+                <button onclick="toggleLang()" class="btn-ctrl">
+                    <span>🌐</span>
+                    <span id="lblLang">English</span>
+                </button>
+            </div>
+        </header>
+
+        <!-- بخش لوگو و عنوان اصلی -->
+        <section class="hero-section">
+            <div class="gta-subtitle-top">Grand Theft Auto</div>
+            <div class="gta-vi-logo">VI</div>
+            <div>
+                <div class="release-pill">
+                    <span>🌴</span>
+                    <span id="lblReleaseWindow">انتشار رسمی راک‌استار: ۱۹ نوامبر ۲۰۲۶ (۲۸ آبان ۱۴۰۵)</span>
+                </div>
+            </div>
+        </section>
+
+        <!-- ۵ کارت شمارش معکوس (روز، ساعت، دقیقه، ثانیه، میلی‌ثانیه) -->
+        <section class="countdown-grid">
+            <div class="count-card">
+                <div class="count-val neon-pink" id="boxDays">00</div>
+                <div class="count-label" style="color: #ff85be;" id="lblDays">روز</div>
+            </div>
+            <div class="count-card">
+                <div class="count-val neon-gold" id="boxHours">00</div>
+                <div class="count-label" style="color: #ffd166;" id="lblHours">ساعت</div>
+            </div>
+            <div class="count-card">
+                <div class="count-val neon-cyan" id="boxMins">00</div>
+                <div class="count-label" style="color: #00f5d4;" id="lblMins">دقیقه</div>
+            </div>
+            <div class="count-card">
+                <div class="count-val neon-purple" id="boxSecs">00</div>
+                <div class="count-label" style="color: #e0aaff;" id="lblSecs">ثانیه</div>
+            </div>
+            <div class="count-card ms-card-span">
+                <div class="count-val" style="color: #ff007f; font-size: clamp(1.8rem, 4vw, 3rem);" id="boxMs">000</div>
+                <div class="count-label" style="color: #ff85be;" id="lblMs">میلی‌ثانیه</div>
+            </div>
+        </section>
+
+        <!-- نوار درصد پیشرفت انتظار از زمان پخش تریلر اول تا روز عرضه -->
+        <section class="wait-progress-box">
+            <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 8px; font-size: 0.85rem; font-weight: 800;">
+                <span id="lblProgressTitle" style="color: #00f5d4;">⏳ درصد طی‌شده از زمان انتشار تریلر ۱ (۵ دسامبر ۲۰۲۳) تا عرضه بازی:</span>
+                <span id="progressPercentText" style="color: #ffb703; font-family: monospace; font-size: 1rem;">0.0000%</span>
+            </div>
+            <div class="progress-track">
+                <div class="progress-fill" id="waitProgressFill"></div>
+            </div>
+            <div style="display: flex; justify-content: space-between; font-size: 0.72rem; color: #a89bb5;">
+                <span id="lblStartWait">شروع انتظار: ۵ دسامبر ۲۰۲۳</span>
+                <span id="lblEndWait">عرضه نهایی: ۱۹ نوامبر ۲۰۲۶</span>
+            </div>
+        </section>
+
+        <!-- بخش دو ستونه: ۱. ساعت زنده و تغییر تاریخ + ۲. رادیو چندکاناله وایس سیتی -->
+        <section class="dual-grid">
+            <!-- پنل کالیبراسیون دقیق زمان -->
+            <div class="glass-card">
+                <div class="card-header-title">
+                    <span id="lblSyncHeader">⏱ کالیبراسیون زنده ساعت سیستم و هدف</span>
+                    <span style="font-size: 0.7rem; color: #ff85be;">SYNCED</span>
+                </div>
+
+                <div style="display: flex; flex-direction: column; gap: 10px; margin-bottom: 14px;">
+                    <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 8px;">
+                        <span id="lblSysTimeTitle" style="font-size: 0.82rem; color: #cbd5e1;">ساعت فعلی دستگاه شما:</span>
+                        <span id="liveSystemClock" class="live-clock-badge">--:--:--</span>
+                    </div>
+                    <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 8px;">
+                        <span id="lblTargetTimeTitle" style="font-size: 0.82rem; color: #cbd5e1;">تاریخ هدف فعال:</span>
+                        <span id="activeTargetDisplay" class="live-clock-badge" style="color: #ff85be; border-color: rgba(255,0,127,0.5); background: rgba(255,0,127,0.12);">2026-11-19 00:00:00</span>
+                    </div>
+                </div>
+
+                <div style="display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 12px;">
+                    <button onclick="setPresetDate('2026-11-19T00:00', this)" class="btn-ctrl preset-btn active" style="padding: 5px 11px; font-size: 0.74rem;" id="btnPreset1">۱۹ نوامبر ۲۰۲۶ (رسمی)</button>
+                    <button onclick="setPresetDate('2026-11-27T00:00', this)" class="btn-ctrl preset-btn" style="padding: 5px 11px; font-size: 0.74rem;" id="btnPreset2">۲۷ نوامبر ۲۰۲۶</button>
+                    <button onclick="setPresetDate('2027-03-20T00:00', this)" class="btn-ctrl preset-btn" style="padding: 5px 11px; font-size: 0.74rem;" id="btnPreset3">بهار ۲۰۲۷</button>
+                </div>
+
+                <div style="display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 8px; padding-top: 8px; border-top: 1px solid rgba(255,255,255,0.08);">
+                    <label for="customDatePicker" id="lblCustomPick" style="font-size: 0.78rem; color: #ffb703; font-weight: 700;">تنظیم تاریخ دلخواه:</label>
+                    <input type="datetime-local" id="customDatePicker" class="date-input-custom" value="2026-11-19T00:00" onchange="setCustomTargetDate(this.value)">
+                </div>
+            </div>
+
+            <!-- رادیو اتومبیل وایس سیتی با ۳ ایستگاه سینت‌ویو -->
+            <div class="glass-card">
+                <div class="card-header-title">
+                    <span id="lblRadioHeader">📻 ایستگاه‌های رادیویی Vice FM</span>
+                    <span id="radioStatusBadge" style="font-size: 0.7rem; color: #94a3b8;">OFFLINE</span>
+                </div>
+
+                <div class="radio-stations-list">
+                    <button class="station-btn" id="stBtn0" onclick="selectStation(0)">
+                        <div style="font-size: 1.1rem;">🌴</div>
+                        <div style="font-weight: 800; font-size: 0.76rem; margin-top: 2px;">Emotion 98.3</div>
+                        <div style="font-size: 0.65rem; opacity: 0.7;">Synth Chill</div>
+                    </button>
+                    <button class="station-btn" id="stBtn1" onclick="selectStation(1)">
+                        <div style="font-size: 1.1rem;">🕺</div>
+                        <div style="font-weight: 800; font-size: 0.76rem; margin-top: 2px;">Fever 105</div>
+                        <div style="font-size: 0.65rem; opacity: 0.7;">Vice Funk</div>
+                    </button>
+                    <button class="station-btn" id="stBtn2" onclick="selectStation(2)">
+                        <div style="font-size: 1.1rem;">⚡</div>
+                        <div style="font-weight: 800; font-size: 0.76rem; margin-top: 2px;">Leonida Bass</div>
+                        <div style="font-size: 0.65rem; opacity: 0.7;">Dark Outrun</div>
+                    </button>
+                </div>
+
+                <canvas id="audioVisualizer" width="400" height="54"></canvas>
+
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 10px;">
+                    <span style="font-size: 0.74rem; color: #cbd5e1;" id="nowPlayingText">روی یک ایستگاه رادیویی کلیک کنید</span>
+                    <button onclick="stopRadio()" class="btn-ctrl" style="padding: 4px 12px; font-size: 0.72rem; border-color: #ef4444; color: #f87171;">⏹ توقف</button>
+                </div>
+            </div>
+        </section>
+
+        <!-- بخش نقشه رادار تعاملی ایالت لئونیدا -->
+        <section class="glass-card">
+            <div class="card-header-title">
+                <span id="lblMapHeader">🗺️ رادار تاکتیکی ایالت لئونیدا (روی مناطق کلیک کنید)</span>
+                <span style="font-size: 0.75rem; color: #ffb703;">GPS: LEONIDA SAT-LINK</span>
+            </div>
+
+            <div class="map-wrapper">
+                <!-- صفحه رادار با پین‌های تعاملی -->
+                <div class="radar-screen">
+                    <div class="radar-sweep"></div>
+                    <!-- خطوط ساحلی فرضی لئونیدا با SVG -->
+                    <svg viewBox="0 0 500 300" style="width: 100%; height: 100%; opacity: 0.45;">
+                        <path d="M80,30 Q180,20 260,60 T390,130 Q430,200 370,260 Q280,280 200,240 T90,170 Z" fill="rgba(0, 245, 212, 0.12)" stroke="#00f5d4" stroke-width="2" stroke-dasharray="6,4"/>
+                        <path d="M140,80 Q240,95 320,160 T290,235" fill="none" stroke="#ff007f" stroke-width="1.5" opacity="0.7"/>
+                        <circle cx="250" cy="150" r="110" fill="none" stroke="rgba(0,245,212,0.2)" stroke-width="1"/>
+                        <circle cx="250" cy="150" r="60" fill="none" stroke="rgba(0,245,212,0.2)" stroke-width="1"/>
+                    </svg>
+
+                    <!-- پین‌های شهرهای لئونیدا -->
+                    <div class="map-pin active" style="top: 42%; left: 74%;" onclick="selectMapZone(0, this)" title="Vice Beach">1</div>
+                    <div class="map-pin" style="top: 62%; left: 28%;" onclick="selectMapZone(1, this)" title="Port Gellhorn">2</div>
+                    <div class="map-pin" style="top: 76%; left: 56%;" onclick="selectMapZone(2, this)" title="Grassrivers">3</div>
+                    <div class="map-pin" style="top: 26%; left: 45%;" onclick="selectMapZone(3, this)" title="Kelly County">4</div>
+                </div>
+
+                <!-- اطلاعات منطقه انتخاب شده -->
+                <div style="display: flex; flex-direction: column; justify-content: space-between; background: rgba(6, 0, 12, 0.65); border-radius: 14px; padding: 18px; border: 1px solid rgba(255,255,255,0.1);">
+                    <div>
+                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
+                            <h3 id="zoneTitle" style="font-size: 1.25rem; font-weight: 900; color: #fff;">۱. ساحل وایس (Vice Beach)</h3>
+                            <span id="zoneDanger" style="font-size: 0.7rem; background: rgba(255,0,127,0.25); border: 1px solid #ff007f; color: #ff85be; padding: 3px 9px; border-radius: 99px; font-weight: 800;">سطح خطر: بالا</span>
+                        </div>
+                        <p id="zoneDesc" style="font-size: 0.85rem; line-height: 1.7; color: #e2cee8;">
+                            قلب تپنده و نئونی ایالت لئونیدا. بلوار اوشن درایو، کلوب‌های شبانه پرزرق‌وبرق، خودروهای سوپراسپرت و باندهای خلافکاری که در پسِ ساحل آفتابی پنهان شده‌اند.
+                        </p>
+                    </div>
+
+                    <div style="margin-top: 16px; padding-top: 12px; border-top: 1px solid rgba(255,255,255,0.1); display: flex; justify-content: space-between; font-size: 0.76rem; color: #00f5d4;">
+                        <span id="zoneStat1">🚓 گشت پلیس: بسیار متراکم</span>
+                        <span id="zoneStat2">💰 غنایم سرقت: فوق‌العاده</span>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- پرونده کاراکترها (Lucia & Jason) با نوار مهارت -->
+        <section class="dossier-grid">
+            <!-- لوسیا -->
+            <div class="glass-card">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
+                    <div>
+                        <h3 style="font-size: 1.4rem; font-weight: 900; color: #fff;">LUCIA</h3>
+                        <span id="lblLuciaRole" style="font-size: 0.75rem; color: #ff85be; font-weight: 700;">مغز متفکر و پروتاگونیست اصلی</span>
+                    </div>
+                    <span style="background: rgba(255,0,127,0.25); border: 1px solid #ff007f; padding: 4px 10px; border-radius: 8px; font-size: 0.72rem; font-weight: 800;">LEONIDA DOC #8492</span>
+                </div>
+                <p id="lblLuciaBio" style="font-size: 0.83rem; line-height: 1.65; color: #f0cbdf; margin-bottom: 14px;">
+                    جسور، بی‌باک و استراتژیست. لوسیا پس از آزادی مشروط با پابند الکترونیکی، به همراه جیسون وارد زنجیره‌ای از سرقت‌های مسلحانه در سراسر ایالت لئونیدا می‌شود.
+                </p>
+                <div class="skill-row">
+                    <div class="skill-label"><span id="lblSkShoot1">تیراندازی و نبرد</span><span>95%</span></div>
+                    <div class="skill-bar"><div class="skill-fill" style="width: 95%;"></div></div>
+                </div>
+                <div class="skill-row">
+                    <div class="skill-label"><span id="lblSkPlan1">طراحی سرقت و نفوذ</span><span>92%</span></div>
+                    <div class="skill-bar"><div class="skill-fill" style="width: 92%;"></div></div>
+                </div>
+            </div>
+
+            <!-- جیسون -->
+            <div class="glass-card" style="border-color: rgba(0, 245, 212, 0.4);">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
+                    <div>
+                        <h3 style="font-size: 1.4rem; font-weight: 900; color: #fff;">JASON</h3>
+                        <span id="lblJasonRole" style="font-size: 0.75rem; color: #00f5d4; font-weight: 700;">راننده فرار و شریک جرم</span>
+                    </div>
+                    <span style="background: rgba(0,245,212,0.2); border: 1px solid #00f5d4; color: #00f5d4; padding: 4px 10px; border-radius: 8px; font-size: 0.72rem; font-weight: 800;">VICE SYNDICATE</span>
+                </div>
+                <p id="lblJasonBio" style="font-size: 0.83rem; line-height: 1.65; color: #ccf8f1; margin-bottom: 14px;">
+                    متخصص رانندگی در تعقیب و گریزهای سرعت بالا و عملیات‌های تاکتیکی. اعتماد متقابل میان جیسون و لوسیا تنها راه بقا در برابر کارتل‌ها و پلیس فدرال است.
+                </p>
+                <div class="skill-row">
+                    <div class="skill-label"><span id="lblSkDrive2">رانندگی حرفه‌ای و گریز</span><span>98%</span></div>
+                    <div class="skill-bar"><div class="skill-fill" style="width: 98%;"></div></div>
+                </div>
+                <div class="skill-row">
+                    <div class="skill-label"><span id="lblSkStam2">استقامت و تاکتیک</span><span>90%</span></div>
+                    <div class="skill-bar"><div class="skill-fill" style="width: 90%;"></div></div>
+                </div>
+            </div>
+        </section>
+
+        <!-- فید شبکه اجتماعی طنز Leonida Man / Bleeter -->
+        <section class="glass-card">
+            <div class="card-header-title">
+                <span id="lblFeedHeader">📱 شبکه اجتماعی لئونیدا (واکنش‌های مردمی به حوادث شهر)</span>
+                <span style="font-size: 0.75rem; color: #00f5d4;">LIVE FEED</span>
+            </div>
+
+            <div class="bleet-grid">
+                <div class="bleet-post">
+                    <div style="font-size: 0.76rem; color: #00f5d4; font-weight: 800;">@LeonidaMan_Official</div>
+                    <p id="postText1" style="font-size: 0.82rem; line-height: 1.55; color: #f3e8ff;">
+                        «امروز صبح یک مرد لئونیدایی با جت‌اسکی وسط بزرگراه وایس سیتی داشت از دست ۳ تا ماشین پلیس فرار می‌کرد! فقط تو لئونیدا همچین چیزی می‌بینی 😂🐊»
+                    </p>
+                    <div style="display: flex; justify-content: space-between; align-items: center;">
+                        <span style="font-size: 0.7rem; color: #94a3b8;">2m ago • Vice Beach</span>
+                        <button class="like-btn" onclick="likePost(this)">🔥 <span>428</span></button>
+                    </div>
+                </div>
+
+                <div class="bleet-post">
+                    <div style="font-size: 0.76rem; color: #ff85be; font-weight: 800;">@ViceNightlife_VIP</div>
+                    <p id="postText2" style="font-size: 0.82rem; line-height: 1.55; color: #f3e8ff;">
+                        «کلوب Malibu امشب غوغاست! لامبورگینی‌های نئونی کل بلوار اوشن درایو رو بستن. شمارش معکوس تا ۱۹ نوامبر ۲۰۲۶ رسماً شروع شده!»
+                    </p>
+                    <div style="display: flex; justify-content: space-between; align-items: center;">
+                        <span style="font-size: 0.7rem; color: #94a3b8;">9m ago • Ocean Drive</span>
+                        <button class="like-btn" onclick="likePost(this)">🔥 <span>1,204</span></button>
+                    </div>
+                </div>
+
+                <div class="bleet-post">
+                    <div style="font-size: 0.76rem; color: #ffb703; font-weight: 800;">@WeazelNews_Alert</div>
+                    <p id="postText3" style="font-size: 0.82rem; line-height: 1.55; color: #f3e8ff;">
+                        «گزارش فوری: سرقت مسلحانه از فروشگاه در پورت گلهورن توسط یک زن و مرد ناشناس. پلیس ایالتی بزرگراه‌های خروجی را مسدود کرده است.»
+                    </p>
+                    <div style="display: flex; justify-content: space-between; align-items: center;">
+                        <span style="font-size: 0.7rem; color: #94a3b8;">15m ago • Port Gellhorn</span>
+                        <button class="like-btn" onclick="likePost(this)">🔥 <span>892</span></button>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- پلتفرم‌ها و لینک تریلر -->
+        <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 14px;">
+            <div style="display: flex; gap: 8px; flex-wrap: wrap;">
+                <button onclick="pickPlatform(this)" class="btn-ctrl platform-btn active">PlayStation 5</button>
+                <button onclick="pickPlatform(this)" class="btn-ctrl platform-btn">Xbox Series X|S</button>
+                <button onclick="pickPlatform(this)" class="btn-ctrl platform-btn">PC (TBA)</button>
+            </div>
+
+            <a href="https://www.youtube.com/watch?v=QdBZY2fkU-0" target="_blank" rel="noopener noreferrer" class="btn-ctrl" style="text-decoration: none; border-color: #ff007f; color: #fff; background: linear-gradient(90deg, rgba(255,0,127,0.5), rgba(131,56,236,0.5)); padding: 10px 22px;">
+                <span>▶</span> <span id="lblTrailer">تماشای تریلر رسمی در یوتیوب</span>
+            </a>
+        </div>
+
+    </div>
+
+    <!-- پاورقی -->
+    <footer style="position: relative; z-index: 10; text-align: center; padding: 16px; font-size: 0.75rem; color: rgba(255,255,255,0.45); border-top: 1px solid rgba(255,255,255,0.08); background: rgba(4,0,8,0.9);">
+        <p id="lblFooter">پروژه تعاملی طرفداران GTA VI • کلیه حقوق نام‌ها و علائم تجاری متعلق به Rockstar Games است.</p>
+    </footer>
+
+    <script>
+        // ==========================================
+        // ۱. تنظیمات تاریخ هدف و محاسبات دقیق تایمر
+        // ==========================================
+        const TRAILER_1_DATE = new Date("2023-12-05T00:00:00").getTime();
+        let targetDateString = "2026-11-19T00:00:00";
+        let targetDate = new Date(targetDateString).getTime();
+
+        function formatReadableDate(dateObj) {
+            const y = dateObj.getFullYear();
+            const m = String(dateObj.getMonth() + 1).padStart(2, '0');
+            const d = String(dateObj.getDate()).padStart(2, '0');
+            const hh = String(dateObj.getHours()).padStart(2, '0');
+            const mm = String(dateObj.getMinutes()).padStart(2, '0');
+            const ss = String(dateObj.getSeconds()).padStart(2, '0');
+            return `${y}-${m}-${d} ${hh}:${mm}:${ss}`;
+        }
+
+        function updateTargetBadge() {
+            const dObj = new Date(targetDate);
+            if (!isNaN(dObj.getTime())) {
+                document.getElementById('activeTargetDisplay').innerText = formatReadableDate(dObj);
+            }
+        }
+
+        function setPresetDate(isoVal, btnEl) {
+            playSfx(720, 'sine', 0.08);
+            document.querySelectorAll('.preset-btn').forEach(b => b.classList.remove('active'));
+            if (btnEl) btnEl.classList.add('active');
+            document.getElementById('customDatePicker').value = isoVal;
+            targetDate = new Date(isoVal).getTime();
+            updateTargetBadge();
+        }
+
+        function setCustomTargetDate(val) {
+            if (!val) return;
+            playSfx(840, 'sine', 0.08);
+            document.querySelectorAll('.preset-btn').forEach(b => b.classList.remove('active'));
+            targetDate = new Date(val).getTime();
+            updateTargetBadge();
+        }
+
+        // حلقه ۶۰ فریم بر ثانیه برای تایمر و میلی‌ثانیه
+        function updateTimerLoop() {
+            const nowObj = new Date();
+            const now = nowObj.getTime();
+
+            // نمایش ساعت زنده دستگاه کاربر
+            document.getElementById('liveSystemClock').innerText = formatReadableDate(nowObj);
+
+            const delta = targetDate - now;
+
+            if (delta <= 0) {
+                document.getElementById('boxDays').innerText = "00";
+                document.getElementById('boxHours').innerText = "00";
+                document.getElementById('boxMins').innerText = "00";
+                document.getElementById('boxSecs').innerText = "00";
+                document.getElementById('boxMs').innerText = "000";
+                document.getElementById('waitProgressFill').style.width = "100%";
+                document.getElementById('progressPercentText').innerText = "100.0000%";
+            } else {
+                const d = Math.floor(delta / (1000 * 60 * 60 * 24));
+                const h = Math.floor((delta % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+                const m = Math.floor((delta % (1000 * 60 * 60)) / (1000 * 60));
+                const s = Math.floor((delta % (1000 * 60)) / 1000);
+                const ms = Math.floor(delta % 1000);
+
+                document.getElementById('boxDays').innerText = String(d).padStart(2, '0');
+                document.getElementById('boxHours').innerText = String(h).padStart(2, '0');
+                document.getElementById('boxMins').innerText = String(m).padStart(2, '0');
+                document.getElementById('boxSecs').innerText = String(s).padStart(2, '0');
+                document.getElementById('boxMs').innerText = String(ms).padStart(3, '0');
+
+                // محاسبه درصد طی‌شده از تریلر اول
+                const totalSpan = targetDate - TRAILER_1_DATE;
+                const elapsed = now - TRAILER_1_DATE;
+                const pct = Math.max(0, Math.min(100, (elapsed / totalSpan) * 100));
+                document.getElementById('waitProgressFill').style.width = pct.toFixed(2) + "%";
+                document.getElementById('progressPercentText').innerText = pct.toFixed(4) + "%";
+            }
+
+            requestAnimationFrame(updateTimerLoop);
+        }
+        updateTargetBadge();
+        requestAnimationFrame(updateTimerLoop);
+
+        // ==========================================
+        // ۲. موتور گرافیکی سه‌بعدی Canvas (غروب، خورشید، بزرگراه نئونی)
+        // ==========================================
+        const canvas = document.getElementById('viceCanvas');
+        const ctx = canvas.getContext('2d');
+        let cw, ch;
+        let gridOffset = 0;
+        let mouseX = 0, mouseY = 0;
+        let wantedLevel = 0;
+
+        function resizeCanvas() {
+            cw = canvas.width = window.innerWidth;
+            ch = canvas.height = window.innerHeight;
+        }
+        window.addEventListener('resize', resizeCanvas);
+        resizeCanvas();
+
+        window.addEventListener('mousemove', (e) => {
+            mouseX = (e.clientX / cw - 0.5) * 30;
+            mouseY = (e.clientY / ch - 0.5) * 15;
+        });
+
+        // ذرات معلق نئونی در آسمان
+        const stars = Array.from({ length: 70 }, () => ({
+            x: Math.random(),
+            y: Math.random() * 0.55,
+            r: Math.random() * 1.8 + 0.4,
+            alpha: Math.random()
+        }));
+
+        function renderViceScene(time) {
+            // گرادیان آسمان شب و غروب وایس سیتی
+            const skyGrad = ctx.createLinearGradient(0, 0, 0, ch * 0.62);
+            skyGrad.addColorStop(0, '#05000a');
+            skyGrad.addColorStop(0.45, '#240333');
+            skyGrad.addColorStop(0.8, '#8a0e51');
+            skyGrad.addColorStop(1, '#ff5420');
+            ctx.fillStyle = skyGrad;
+            ctx.fillRect(0, 0, cw, ch * 0.62);
+
+            const horizonY = ch * 0.6 + mouseY * 0.4;
+            const centerX = cw * 0.5 + mouseX;
+
+            // ستاره‌های چشمک‌زن
+            stars.forEach(st => {
+                ctx.fillStyle = `rgba(255, 230, 250, ${0.3 + Math.abs(Math.sin(time * 0.002 + st.alpha * 10)) * 0.7})`;
+                ctx.beginPath();
+                ctx.arc(st.x * cw, st.y * ch, st.r, 0, Math.PI * 2);
+                ctx.fill();
+            });
+
+            // خورشید سینت‌ویو راه‌راه در افق
+            const sunRadius = Math.min(cw, ch) * 0.22;
+            const sunY = horizonY - sunRadius * 0.25;
+            const sunGrad = ctx.createLinearGradient(0, sunY - sunRadius, 0, sunY + sunRadius);
+            sunGrad.addColorStop(0, '#ffee00');
+            sunGrad.addColorStop(0.55, '#ff007f');
+            sunGrad.addColorStop(1, '#59006e');
+
+            ctx.save();
+            ctx.beginPath();
+            ctx.arc(centerX, sunY, sunRadius, 0, Math.PI * 2);
+            ctx.fillStyle = sunGrad;
+            ctx.shadowColor = '#ff007f';
+            ctx.shadowBlur = 50;
+            ctx.fill();
+            ctx.restore();
+
+            // خطوط برش افقی روی خورشید رترو
+            ctx.fillStyle = '#3b053b';
+            for (let i = 0; i < 7; i++) {
+                const sliceY = sunY + (i * sunRadius * 0.14);
+                const sliceH = 2 + i * 1.6;
+                if (sliceY < horizonY) {
+                    ctx.fillRect(centerX - sunRadius, sliceY, sunRadius * 2, sliceH);
+                }
+            }
+
+            // سیلوئت برج‌های شهر وایس سیتی در افق
+            ctx.fillStyle = '#090112';
+            const buildingWidths = [28, 42, 18, 50, 35, 25, 45, 30, 60, 22, 38, 48, 28, 35];
+            let bx = centerX - 380;
+            buildingWidths.forEach((bw, idx) => {
+                const bh = 25 + ((idx * 37) % 65);
+                ctx.fillRect(bx, horizonY - bh, bw - 2, bh);
+                bx += bw;
+            });
+
+            // سطح زمین و بزرگراه پرسپکتیو سه‌بعدی
+            const groundGrad = ctx.createLinearGradient(0, horizonY, 0, ch);
+            groundGrad.addColorStop(0, '#1c022b');
+            groundGrad.addColorStop(0.3, '#0a0112');
+            groundGrad.addColorStop(1, '#030006');
+            ctx.fillStyle = groundGrad;
+            ctx.fillRect(0, horizonY, cw, ch - horizonY);
+
+            // خطوط شعاعی پرسپکتیو گرید
+            ctx.strokeStyle = wantedLevel > 0 ? 'rgba(255, 30, 90, 0.45)' : 'rgba(0, 245, 212, 0.35)';
+            ctx.lineWidth = 1.3;
+            const numRays = 24;
+            for (let i = -numRays; i <= numRays; i++) {
+                ctx.beginPath();
+                ctx.moveTo(centerX + i * 18, horizonY);
+                ctx.lineTo(centerX + i * 160, ch);
+                ctx.stroke();
+            }
+
+            // خطوط افقی متحرک رو به جلو (حس سرعت در بزرگراه)
+            const speed = wantedLevel > 0 ? 0.0028 : 0.0012;
+            gridOffset = (gridOffset + speed * 16) % 1;
+            ctx.strokeStyle = 'rgba(255, 0, 127, 0.4)';
+            for (let i = 0; i < 12; i++) {
+                const p = (i + gridOffset) / 12;
+                const yPos = horizonY + Math.pow(p, 2.3) * (ch - horizonY);
+                ctx.beginPath();
+                ctx.moveTo(0, yPos);
+                ctx.lineTo(cw, yPos);
+                ctx.stroke();
+            }
+
+            requestAnimationFrame(renderViceScene);
+        }
+        requestAnimationFrame(renderViceScene);
+
+        // ==========================================
+        // ۳. سیستم تعقیب و گریز ۶ ستاره پلیس (Wanted Level)
+        // ==========================================
+        let sirenInterval = null;
+        let cashAmount = 99999999;
+
+        function addHeistCash() {
+            cashAmount += Math.floor(Math.random() * 250000) + 50000;
+            document.getElementById('hudCash').innerText = '$' + cashAmount.toLocaleString();
+            playSfx(1150, 'triangle', 0.09);
+        }
+
+        function setWantedLevel(level) {
+            wantedLevel = level;
+            const stars = document.querySelectorAll('.star-btn');
+            stars.forEach((st, idx) => {
+                st.classList.toggle('active', idx < level);
+            });
+
+            const overlay = document.getElementById('policeOverlay');
+            const heli = document.getElementById('heliSearchlight');
+            const clearBtn = document.getElementById('btnClearWanted');
+            const statusLbl = document.getElementById('lblWantedStatus');
+
+            overlay.classList.add('siren-active');
+            clearBtn.style.display = 'inline-flex';
+            heli.style.display = level >= 5 ? 'block' : 'none';
+
+            const statusTextsFa = ["عادی", "۱ ستاره: گشت محلی", "۲ ستاره: تعقیب پلیس", "۳ ستاره: هلیکوپتر و راه‌بندان", "۴ ستاره: نیروهای ویژه SWAT", "۵ ستاره: محاصره فدرال FIB", "۶ ستاره: ارتش و حکومت نظامی!"];
+            const statusTextsEn = ["CLEAR", "1-STAR: PATROL", "2-STAR: PURSUIT", "3-STAR: CHOPPER INBOUND", "4-STAR: SWAT DEPLOYED", "5-STAR: FIB LOCKDOWN", "6-STAR: MILITARY TANKS!"];
+            statusLbl.innerText = currentLang === 'fa' ? statusTextsFa[level] : statusTextsEn[level];
+
+            playPoliceSirenSound();
+            if (sirenInterval) clearInterval(sirenInterval);
+            sirenInterval = setInterval(playPoliceSirenSound, 1400);
+        }
+
+        function clearWanted() {
+            wantedLevel = 0;
+            document.querySelectorAll('.star-btn').forEach(st => st.classList.remove('active'));
+            document.getElementById('policeOverlay').classList.remove('siren-active');
+            document.getElementById('heliSearchlight').style.display = 'none';
+            document.getElementById('btnClearWanted').style.display = 'none';
+            document.getElementById('lblWantedStatus').innerText = currentLang === 'fa' ? "وضعیت: عادی" : "STATUS: CLEAR";
+            if (sirenInterval) clearInterval(sirenInterval);
+            playSfx(920, 'sine', 0.15);
+        }
+
+        // ==========================================
+        // ۴. موتور صوتی Web Audio API و رادیو ۳ کاناله + ویژوالایزر
+        // ==========================================
+        let audioCtx = null;
+        let activeStation = -1;
+        let radioTimer = null;
+        const visCanvas = document.getElementById('audioVisualizer');
+        const visCtx = visCanvas.getContext('2d');
+
+        function getAudio() {
+            if (!audioCtx) {
+                audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+            }
+            if (audioCtx.state === 'suspended') {
+                audioCtx.resume();
+            }
+            return audioCtx;
+        }
+
+        function playSfx(freq = 600, type = 'sine', dur = 0.08) {
+            try {
+                const c = getAudio();
+                const osc = c.createOscillator();
+                const g = c.createGain();
+                osc.type = type;
+                osc.frequency.setValueAtTime(freq, c.currentTime);
+                g.gain.setValueAtTime(0.05, c.currentTime);
+                g.gain.exponentialRampToValueAtTime(0.0001, c.currentTime + dur);
+                osc.connect(g);
+                g.connect(c.destination);
+                osc.start();
+                osc.stop(c.currentTime + dur);
+            } catch (e) {}
+        }
+
+        function playPoliceSirenSound() {
+            if (wantedLevel === 0) return;
+            try {
+                const c = getAudio();
+                const now = c.currentTime;
+                const osc = c.createOscillator();
+                const g = c.createGain();
+                osc.type = 'sawtooth';
+                osc.frequency.setValueAtTime(520, now);
+                osc.frequency.linearRampToValueAtTime(920, now + 0.35);
+                osc.frequency.linearRampToValueAtTime(520, now + 0.7);
+                g.gain.setValueAtTime(0.03, now);
+                g.gain.exponentialRampToValueAtTime(0.0001, now + 0.72);
+                osc.connect(g);
+                g.connect(c.destination);
+                osc.start(now);
+                osc.stop(now + 0.72);
+            } catch (e) {}
+        }
+
+        function selectStation(idx) {
+            activeStation = idx;
+            document.querySelectorAll('.station-btn').forEach((b, i) => b.classList.toggle('active', i === idx));
+            const names = ["Emotion 98.3 // Synthwave Chill", "Fever 105 // Vice Disco Funk", "Leonida Bass // Dark Outrun"];
+            document.getElementById('nowPlayingText').innerText = "🎵 " + names[idx];
+            document.getElementById('radioStatusBadge').innerText = "ON AIR";
+            document.getElementById('radioStatusBadge').style.color = "#00f5d4";
+
+            if (radioTimer) clearInterval(radioTimer);
+            triggerStationBeat();
+            const tempo = idx === 0 ? 1400 : (idx === 1 ? 650 : 480);
+            radioTimer = setInterval(triggerStationBeat, tempo);
+        }
+
+        function stopRadio() {
+            activeStation = -1;
+            if (radioTimer) clearInterval(radioTimer);
+            document.querySelectorAll('.station-btn').forEach(b => b.classList.remove('active'));
+            document.getElementById('nowPlayingText').innerText = currentLang === 'fa' ? "رادیو خاموش است" : "Radio Turned Off";
+            document.getElementById('radioStatusBadge').innerText = "OFFLINE";
+            document.getElementById('radioStatusBadge').style.color = "#94a3b8";
+            playSfx(320, 'sine', 0.1);
+        }
+
+        function triggerStationBeat() {
+            if (activeStation === -1) return;
+            try {
+                const c = getAudio();
+                const now = c.currentTime;
+
+                if (activeStation === 0) {
+                    // Emotion 98.3: آکوردهای رویایی سینت‌ویو
+                    const chords = [[220, 261.6, 329.6], [174.6, 220, 261.6], [196, 246.9, 293.6]];
+                    const pick = chords[Math.floor(Math.random() * chords.length)];
+                    pick.forEach(f => {
+                        const osc = c.createOscillator();
+                        const g = c.createGain();
+                        osc.type = 'sawtooth';
+                        osc.frequency.setValueAtTime(f, now);
+                        g.gain.setValueAtTime(0.025, now);
+                        g.gain.exponentialRampToValueAtTime(0.0001, now + 1.2);
+                        osc.connect(g);
+                        g.connect(c.destination);
+                        osc.start(now);
+                        osc.stop(now + 1.2);
+                    });
+                } else if (activeStation === 1) {
+                    // Fever 105: بیس‌لاین فانک
+                    const notes = [110, 130.8, 146.8, 164.8, 196];
+                    const f = notes[Math.floor(Math.random() * notes.length)];
+                    const osc = c.createOscillator();
+                    const g = c.createGain();
+                    osc.type = 'triangle';
+                    osc.frequency.setValueAtTime(f, now);
+                    g.gain.setValueAtTime(0.06, now);
+                    g.gain.exponentialRampToValueAtTime(0.0001, now + 0.45);
+                    osc.connect(g);
+                    g.connect(c.destination);
+                    osc.start(now);
+                    osc.stop(now + 0.45);
+                } else {
+                    // Leonida Bass: بیس تند سایبرپانک
+                    const notes = [65.4, 73.4, 82.4, 98];
+                    const f = notes[Math.floor(Math.random() * notes.length)];
+                    const osc = c.createOscillator();
+                    const g = c.createGain();
+                    osc.type = 'sawtooth';
+                    osc.frequency.setValueAtTime(f, now);
+                    g.gain.setValueAtTime(0.05, now);
+                    g.gain.exponentialRampToValueAtTime(0.0001, now + 0.35);
+                    osc.connect(g);
+                    g.connect(c.destination);
+                    osc.start(now);
+                    osc.stop(now + 0.35);
+                }
+            } catch (e) {}
+        }
+
+        // انیمیشن ویژوالایزر صوتی
+        function drawVisualizer() {
+            visCtx.clearRect(0, 0, visCanvas.width, visCanvas.height);
+            const bars = 32;
+            const barW = (visCanvas.width / bars) - 3;
+            for (let i = 0; i < bars; i++) {
+                const h = activeStation !== -1
+                    ? Math.floor(Math.random() * 38) + 8
+                    : 4 + Math.sin(Date.now() * 0.005 + i * 0.4) * 2;
+                const grad = visCtx.createLinearGradient(0, visCanvas.height - h, 0, visCanvas.height);
+                grad.addColorStop(0, '#00f5d4');
+                grad.addColorStop(1, '#ff007f');
+                visCtx.fillStyle = grad;
+                visCtx.fillRect(i * (barW + 3), visCanvas.height - h, barW, h);
+            }
+            requestAnimationFrame(drawVisualizer);
+        }
+        requestAnimationFrame(drawVisualizer);
+
+        // ==========================================
+        // ۵. اطلاعات نقشه رادار لئونیدا و تعاملات
+        // ==========================================
+        const mapZones = {
+            fa: [
+                {
+                    title: "۱. ساحل وایس (Vice Beach)",
+                    danger: "سطح خطر: بالا",
+                    desc: "قلب تپنده و نئونی ایالت لئونیدا. بلوار اوشن درایو، کلوب‌های شبانه پرزرق‌وبرق، خودروهای سوپراسپرت و باندهای خلافکاری که در پسِ ساحل آفتابی پنهان شده‌اند.",
+                    s1: "🚓 گشت پلیس: بسیار متراکم",
+                    s2: "💰 غنایم سرقت: فوق‌العاده"
+                },
+                {
+                    title: "۲. بندر گلهورن (Port Gellhorn)",
+                    danger: "سطح خطر: بحرانی",
+                    desc: "منطقه صنعتی و بندرگاه قدیمی در غرب لئونیدا. پاتوق قاچاقچیان، متل‌های بین‌راهی و سرقت‌های مسلحانه که لوسیا و جیسون در تریلر اول در آن دیده شدند.",
+                    s1: "🚓 گشت پلیس: متوسط",
+                    s2: "💰 غنایم سرقت: انبارهای قاچاق"
+                },
+                {
+                    title: "۳. مرداب‌های گرس‌ریورز (Grassrivers)",
+                    danger: "سطح خطر: حیات‌وحش مرگبار",
+                    desc: "تالاب‌های وسیع و استوایی پر از تمساح‌های غول‌پیکر، قایق‌های پنکه‌ای (Airboats) و کلبه خلافکاران فراری در دل مرداب.",
+                    s1: "🐊 تراکم تمساح: بسیار بالا",
+                    s2: "🚤 وسیله نقلیه: قایق بادی"
+                },
+                {
+                    title: "۴. شهرستان کِلی (Kelly County)",
+                    danger: "سطح خطر: متوسط",
+                    desc: "جاده‌های خاکی، مسابقات غیرقانونی ماشین‌های عضلانی و گروه‌های موتورسوار در شمال ایالت لئونیدا.",
+                    s1: "🏁 مسابقات خیابانی: فعال",
+                    s2: "💰 غنایم سرقت: متوسط"
+                }
+            ],
+            en: [
+                {
+                    title: "1. Vice Beach & Ocean Drive",
+                    danger: "Threat: HIGH",
+                    desc: "The neon-soaked heart of Leonida. Glitzy nightclubs, exotic supercars, and high-stakes syndicate operations hiding behind palm-lined beaches.",
+                    s1: "🚓 Police Presence: Heavy",
+                    s2: "💰 Heist Loot: Ultra High"
+                },
+                {
+                    title: "2. Port Gellhorn",
+                    danger: "Threat: CRITICAL",
+                    desc: "Gritty industrial coastline on Leonida's western shore. Home to pawn shops, strip malls, and armed Diner hold-ups.",
+                    s1: "🚓 Police Presence: Moderate",
+                    s2: "💰 Heist Loot: Contraband"
+                },
+                {
+                    title: "3. Grassrivers Wetlands",
+                    danger: "Threat: APEX PREDATORS",
+                    desc: "Untamed subtropical swamps teeming with giant alligators, airboat smugglers, and hidden backwater stashes.",
+                    s1: "🐊 Alligator Density: Extreme",
+                    s2: "🚤 Transport: Custom Airboats"
+                },
+                {
+                    title: "4. Kelly County",
+                    danger: "Threat: MODERate",
+                    desc: "Rural highways, mud-bogging tracks, outlaw biker gangs, and high-speed interstate pursuits.",
+                    s1: "🏁 Street Racing: Active",
+                    s2: "💰 Heist Loot: Medium"
+                }
+            ]
+        };
+
+        let activeZoneIdx = 0;
+        function selectMapZone(idx, pinEl) {
+            activeZoneIdx = idx;
+            playSfx(780, 'sine', 0.08);
+            document.querySelectorAll('.map-pin').forEach(p => p.classList.remove('active'));
+            if (pinEl) pinEl.classList.add('active');
+            renderZoneText();
+        }
+
+        function renderZoneText() {
+            const z = mapZones[currentLang][activeZoneIdx];
+            document.getElementById('zoneTitle').innerText = z.title;
+            document.getElementById('zoneDanger').innerText = z.danger;
+            document.getElementById('zoneDesc').innerText = z.desc;
+            document.getElementById('zoneStat1').innerText = z.s1;
+            document.getElementById('zoneStat2').innerText = z.s2;
+        }
+
+        function likePost(btn) {
+            playSfx(980, 'triangle', 0.08);
+            const span = btn.querySelector('span');
+            let count = parseInt(span.innerText.replace(/,/g, ''), 10) + 1;
+            span.innerText = count.toLocaleString();
+            btn.style.background = '#ff007f';
+            btn.style.color = '#fff';
+        }
+
+        function pickPlatform(btn) {
+            playSfx(620, 'sine', 0.07);
+            document.querySelectorAll('.platform-btn').forEach(b => b.classList.remove('active'));
+            btn.classList.add('active');
+        }
+
+        // ==========================================
+        // ۶. پشتیبانی دوزبانه کامل (فارسی / انگلیسی)
+        // ==========================================
+        let currentLang = 'fa';
+        const i18n = {
+            fa: {
+                newsBadge: "خبر فوری لئونیدا",
+                langBtn: "English",
+                wantedHint: "سطح تعقیب پلیس (کلیک کنید):",
+                bribe: "رشوه به پلیس (حذف ستاره)",
+                releaseWindow: "انتشار رسمی راک‌استار: ۱۹ نوامبر ۲۰۲۶ (۲۸ آبان ۱۴۰۵)",
+                days: "روز", hours: "ساعت", mins: "دقیقه", secs: "ثانیه", ms: "میلی‌ثانیه",
+                progressTitle: "⏳ درصد طی‌شده از زمان انتشار تریلر ۱ (۵ دسامبر ۲۰۲۳) تا عرضه بازی:",
+                startWait: "شروع انتظار: ۵ دسامبر ۲۰۲۳",
+                endWait: "عرضه نهایی: ۱۹ نوامبر ۲۰۲۶",
+                syncHeader: "⏱ کالیبراسیون زنده ساعت سیستم و هدف",
+                sysTimeTitle: "ساعت فعلی دستگاه شما:",
+                targetTimeTitle: "تاریخ هدف فعال:",
+                preset1: "۱۹ نوامبر ۲۰۲۶ (رسمی)",
+                preset2: "۲۷ نوامبر ۲۰۲۶",
+                preset3: "بهار ۲۰۲۷",
+                customPick: "تنظیم تاریخ دلخواه:",
+                radioHeader: "📻 ایستگاه‌های رادیویی Vice FM",
+                mapHeader: "🗺️ رادار تاکتیکی ایالت لئونیدا (روی مناطق کلیک کنید)",
+                luciaRole: "مغز متفکر و پروتاگونیست اصلی",
+                luciaBio: "جسور، بی‌باک و استراتژیست. لوسیا پس از آزادی مشروط با پابند الکترونیکی، به همراه جیسون وارد زنجیره‌ای از سرقت‌های مسلحانه در سراسر ایالت لئونیدا می‌شود.",
+                jasonRole: "راننده فرار و شریک جرم",
+                jasonBio: "متخصص رانندگی در تعقیب و گریزهای سرعت بالا و عملیات‌های تاکتیکی. اعتماد متقابل میان جیسون و لوسیا تنها راه بقا در برابر کارتل‌ها و پلیس فدرال است.",
+                feedHeader: "📱 شبکه اجتماعی لئونیدا (واکنش‌های مردمی به حوادث شهر)",
+                trailer: "تماشای تریلر رسمی در یوتیوب",
+                footer: "پروژه تعاملی طرفداران GTA VI • کلیه حقوق نام‌ها و علائم تجاری متعلق به Rockstar Games است.",
+                news: [
+                    "راک‌استار گیمز تایید کرد: انتشار جهانی GTA VI در تاریخ ۱۹ نوامبر ۲۰۲۶ (۲۸ آبان ۱۴۰۵)!",
+                    "تمساح ۵ متری وارد فروشگاه ۲۴ ساعته در وایس سیتی شد؛ مشتریان با گوشی فیلم گرفتند!",
+                    "پلیس بزرگراه لئونیدا به دنبال زوج سارق با خودروی عضلانی قرمز رنگ است."
+                ]
+            },
+            en: {
+                newsBadge: "LEONIDA BREAKING",
+                langBtn: "فارسی",
+                wantedHint: "Wanted Level (Click Stars):",
+                bribe: "Bribe Cops (Clear Wanted)",
+                releaseWindow: "OFFICIAL ROCKSTAR LAUNCH: NOVEMBER 19, 2026",
+                days: "DAYS", hours: "HOURS", mins: "MINS", secs: "SECS", ms: "MILLISECS",
+                progressTitle: "⏳ Wait Progress Since Trailer 1 (Dec 5, 2023) to Launch:",
+                startWait: "Announcement: Dec 5, 2023",
+                endWait: "Global Launch: Nov 19, 2026",
+                syncHeader: "⏱ Live Hardware Clock & Target Sync",
+                sysTimeTitle: "Your Live Device Clock:",
+                targetTimeTitle: "Active Target Date:",
+                preset1: "Nov 19, 2026 (Official)",
+                preset2: "Nov 27, 2026",
+                preset3: "Spring 2027",
+                customPick: "Custom Target Date:",
+                radioHeader: "📻 Vice FM Synthwave Radio",
+                mapHeader: "🗺️ Leonida Tactical Radar (Click Hotspots)",
+                luciaRole: "Mastermind & Lead Protagonist",
+                luciaBio: "Fierce, calculating, and fearless. Fresh off parole with an ankle monitor, Lucia teams up with Jason for high-stakes heists across Leonida.",
+                jasonRole: "Getaway Driver & Enforcer",
+                jasonBio: "Expert wheelman in high-speed pursuits and tactical operations. Mutual trust between Jason and Lucia is their only survival tool.",
+                feedHeader: "📱 Leonida Social Feed (Live Citizen Reactions)",
+                trailer: "Watch Official Trailer 1",
+                footer: "Interactive GTA VI Fan Hub • All trademarks belong to Rockstar Games.",
+                news: [
+                    "Rockstar Games confirms official global release date: November 19, 2026 for PS5 & Xbox Series X|S!",
+                    "15-foot alligator walks into Vice Beach convenience store; locals unfazed!",
+                    "Leonida Highway Patrol in high-speed pursuit of armed duo in red muscle car."
+                ]
+            }
+        };
+
+        let newsIdx = 0;
+        setInterval(() => {
+            const el = document.getElementById('newsContent');
+            el.style.opacity = '0';
+            setTimeout(() => {
+                newsIdx = (newsIdx + 1) % i18n[currentLang].news.length;
+                el.innerText = i18n[currentLang].news[newsIdx];
+                el.style.opacity = '1';
+            }, 300);
+        }, 4500);
+
+        function toggleLang() {
+            playSfx(750, 'sine', 0.08);
+            currentLang = currentLang === 'fa' ? 'en' : 'fa';
+            document.documentElement.dir = currentLang === 'fa' ? 'rtl' : 'ltr';
+            document.documentElement.lang = currentLang;
+
+            const t = i18n[currentLang];
+            document.getElementById('lblNewsBadge').innerText = t.newsBadge;
+            document.getElementById('newsContent').innerText = t.news[newsIdx];
+            document.getElementById('lblLang').innerText = t.langBtn;
+            document.getElementById('lblWantedHint').innerText = t.wantedHint;
+            document.getElementById('lblBribe').innerText = t.bribe;
+            document.getElementById('lblReleaseWindow').innerText = t.releaseWindow;
+            document.getElementById('lblDays').innerText = t.days;
+            document.getElementById('lblHours').innerText = t.hours;
+            document.getElementById('lblMins').innerText = t.mins;
+            document.getElementById('lblSecs').innerText = t.secs;
+            document.getElementById('lblMs').innerText = t.ms;
+            document.getElementById('lblProgressTitle').innerText = t.progressTitle;
+            document.getElementById('lblStartWait').innerText = t.startWait;
+            document.getElementById('lblEndWait').innerText = t.endWait;
+            document.getElementById('lblSyncHeader').innerText = t.syncHeader;
+            document.getElementById('lblSysTimeTitle').innerText = t.sysTimeTitle;
+            document.getElementById('lblTargetTimeTitle').innerText = t.targetTimeTitle;
+            document.getElementById('btnPreset1').innerText = t.preset1;
+            document.getElementById('btnPreset2').innerText = t.preset2;
+            document.getElementById('btnPreset3').innerText = t.preset3;
+            document.getElementById('lblCustomPick').innerText = t.customPick;
+            document.getElementById('lblRadioHeader').innerText = t.radioHeader;
+            document.getElementById('lblMapHeader').innerText = t.mapHeader;
+            document.getElementById('lblLuciaRole').innerText = t.luciaRole;
+            document.getElementById('lblLuciaBio').innerText = t.luciaBio;
+            document.getElementById('lblJasonRole').innerText = t.jasonRole;
+            document.getElementById('lblJasonBio').innerText = t.jasonBio;
+            document.getElementById('lblFeedHeader').innerText = t.feedHeader;
+            document.getElementById('lblTrailer').innerText = t.trailer;
+            document.getElementById('lblFooter').innerText = t.footer;
+
+            renderZoneText();
+            if (wantedLevel === 0) {
+                document.getElementById('lblWantedStatus').innerText = currentLang === 'fa' ? "وضعیت: عادی" : "STATUS: CLEAR";
+            }
+        }
+    </script>
+</body>
+</html>
